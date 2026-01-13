@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+
+<!-- Bác tìm kiếm gì ở đây? -->
+<!-- Bác tìm kiếm gì ở đây? -->
+<!-- Bác tìm kiếm gì ở đây? -->
+<!-- Bác tìm kiếm gì ở đây? -->
+
+<html>
+<head>
+    <title>Tuỳ biến ProMax</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+     <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 10;
+            padding: 0;
+            background-color: #f0f0f0;
+        }
+        table, th, td {
+            border: 1px solid black;
+            border-collapse: collapse;
+        }
+    </style>
+</head>
+<body>
+    <div class="topnav">
+        <h1>Tuỳ biến ProMax</h1>
+    </div>
+    <div class="content">
+        <p>
+            <button id="connectBleButton" class="connectButton"> Kết nối ProMax </button>
+        </p>
+        <p class="gray-label">Trạng thái kết nối: <strong><span id="bleState" style="color:#d13a30;">Không kết nối</span></strong></p>
+   
+    </div>
+    
+    <div id="configBlock" style="display: none;">
+    <p>
+        <p>
+            Sửa giá trị trong bảng dưới rồi ấn <b>Gửi</b>
+        </p>
+        <table>
+            <tr>
+                <td>Xoay màn hình (chọn đến khi phù hợp)</td>
+                <td>
+                    <select id="display_rotation" onchange="updateConfig()">
+                        <option value="0">0 (Hướng 0)</option>
+                        <option value="1">1 (Hướng 1)</option>
+                        <option value="2">2 (Hướng 2)</option>
+                        <option value="3">3 (Hướng 3)</option>
+                        <option value="4">4 (Hướng 4, ảnh ngược)</option>
+                        <option value="5">5 (Hướng 5, ảnh ngược)</option>
+                        <option value="6">6 (Hướng 6, ảnh ngược)</option>
+                        <option value="7">7 (Hướng 7, ảnh ngược)</option>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td>Giao diện màn hình</td>
+                <td>
+                    <select id="screen" onchange="updateConfig()">
+                        <option value="0">0 (Đầy đủ)</option>
+                        <option value="1">1 (Chỉ tốc độ giới hạn)</option>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td>Hiện đồng hồ khi không có camera</td>
+                <td>
+                    <select id="show_clock" onchange="updateConfig()">
+                        <option value="1">1 (Hiện đồng hồ)</option>
+                        <option value="0">0 (Ẩn)</option>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td>Ẩn hiện chữ "km/h"</td>
+                <td>
+                    <select id="show_text_kmh" onchange="updateConfig()">
+                        <option value="1">1 (Hiện)</option>
+                        <option value="0">0 (Ẩn)</option>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td>Ẩn hiện số 0 10 20 ... 130 </td>
+                <td>
+                    <select id="show_number_marker" onchange="updateConfig()">
+                        <option value="1">1 (Hiện)</option>
+                        <option value="0">0 (Ẩn)</option>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td>Hiện tốc độ  </td>
+                <td>
+                    <select id="show_speed" onchange="updateConfig()">
+                        <option value="1">1 (Hiện)</option>
+                        <option value="0">0 (Ẩn)</option>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td>Hiện thời tiết </td>
+                <td>
+                    <select id="show_weather" onchange="updateConfig()">
+                        <option value="1">1 (Hiện)</option>
+                        <option value="0">0 (Ẩn)</option>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td>Upload ảnh màn hình khởi động, và ảnh màn chờ (1) </td>
+                <td>
+                    <button id="transfer-file-button">Upload</button>
+                    <div id="file-transfer-percent" style="display: none;">0%</div>
+                </td>
+            </tr>
+            <tr>
+                <td>Thời gian hiện ảnh màn hình khởi động (2) </td>
+                <td>
+                    <input type="number" id="boot_screen_duration" min="0" max="255" onchange="updateConfig()">
+                </td>
+            </tr>
+            <tr>
+                <td>Kêu bip khi tốc độ giới hạn thay đổi </td>
+                <td>
+                    <select id="beep_limit_change" onchange="updateConfig()">
+                        <option value="1">1 (Kêu)</option>
+                        <option value="0">0 (Ko kêu)</option>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+            <tr>
+                <td>Mầu LED cảnh báo</td>
+                <td>
+                    <input type="color" id="led_color" onchange="updateConfig()">
+                </td>
+            </tr>
+
+            <tr>
+                <td>Độ sáng LED cảnh báo</td>
+                <td>
+                    <input type="range" id="led_brightness" min="0" max="10" oninput="updateConfig()">
+                </td>
+            </tr>
+
+            <tr>
+                <td>Độ sáng màn hình khi trời tối</td>
+                <td>
+                    <input type="range" id="night_brightness" min="0" max="10" oninput="updateConfig()">
+                </td>
+            </tr>
+
+            <tr>
+                <td>Chữ hiện trên màn hình</td>
+                <td>
+                    <input type="text" id="logo_text" maxlength="10" onchange="updateConfig()">
+                </td>
+            </tr>
+            
+            <tr>
+                <td>Cảnh báo tốc độ trễ (3) </td>
+                <td>
+                    <input type="number" id="speed_limit_offset" min="0" onchange="updateConfig()">
+                </td>
+            </tr>
+
+            <tr>
+                <td>Dòng chữ khi khởi động </td>
+                <td>
+                    <input type="text" id="welcome_text" onchange="updateConfig()">
+                </td>
+            </tr>
+
+            <tr>
+                <td>Trạng thái màn hình khi không có kết nối </td>
+                <td>
+                    <select id="sleep_screen_mode" onchange="updateConfig()">
+                        <option value="0">0 (Tắt màn hình)</option>
+                        <option value="1">1 (Bật dasai mochi)</option>
+                        <option value="2">2 (Hiện ảnh)</option>
+                    </select>
+                </td>
+            </tr>
+
+        </table>
+        <p>
+            <i>
+                1) Ảnh jpeg 240x240, nhở hơn 100KB. ProMax tự khởi động lại khi up thành công <br>
+                2) Thời gian đơn vị giây. Tối đa 255 giây. 0 giây tức là không hiện. <br>
+                3) Cảnh báo tốc độ trễ ví dụ tốc độ giới hạn là 50km/h, muốn đi vượt quá 53km/h mới cảnh báo thì nhập 3 <br>
+            </i>
+        </p>
+        <p>          
+        </p>
+        <table>
+            <tr>
+                <td>Kết nối đầu đọc obd vgate icar pro 4.0 <br>Chỉ bật khi có đầu đọc</td>
+                <td>
+                    <select id="obd_scan_duration" onchange="updateConfig()">
+                        <option value="0">0 (Tắt)</option>
+                        <option value="5">5 (Bật scan 5s)</option>                
+                        <option value="10">10 (Bật scan 10s)</option>                
+                    </select>
+                </td>
+            </tr>
+
+            <tr>
+                <td>Giữ HUD luôn bật khi có kết nối OBD</td>
+                <td>
+                    <select id="keep_awake_on_obd" onchange="updateConfig()">
+                        <option value="1">1 (Luôn bật)</option>
+                        <option value="0">0 (Chỉ bật khi có kết nối vml)</option>                                        
+                    </select>
+                </td>
+            </tr>
+          <!--  <tr style="display: none;>
+                <td>Tự ngủ sau khi có kết nối (giây) </td>
+                <td>
+                    <input type="number" id="awake_duration" min="0" onchange="updateConfig()">
+                </td>
+            </tr>
+            <tr style="display: none;>
+                <td>Thời gian ngủ (giây) </td>
+                <td>
+                    <input type="number" id="sleep_duration" min="0" onchange="updateConfig()">
+                </td>
+            </tr> -->
+        </table>    
+        
+        <p>
+            <button id="sendButton" onclick="send()">Gửi</button> <strong><span id="sendState" style="color:#24af37;"></span></strong>
+        </p>
+        <p>
+            <input type="text" size="140"  id="configOutput" readonly style="display: none;">
+        </p>
+        
+    </p>
+</div>
+</body>
+
+<script>
+
+    const connectButton = document.getElementById('connectBleButton');
+    const transferFileButton = document.getElementById('transfer-file-button');
+    const bleStateContainer = document.getElementById('bleState');
+    const percent = document.getElementById('file-transfer-percent');
+    const sendButton = document.getElementById('sendButton');
+    const brightnessSlider = document.getElementById('led_brightness');
+    const brightnessValue = document.getElementById('brightness_value');
+    const configBlock = document.getElementById('configBlock');
+
+    const configOutput = document.getElementById("configOutput");
+    
+    //Define BLE Device Specs
+    const DEVICE_NAME = 'VIETMAP_HUD';
+    const SERVICE_UUID = '0000fff0-0000-1000-8000-00805f9b34fb';
+
+    const WRITE_CHAR_UUID = '0000fff2-0000-1000-8000-00805f9b34fb';
+    const NOTIF_CHAR_UUID = '0000fff1-0000-1000-8000-00805f9b34fb';
+    const FILE_BLOCK_UUID = '0000fff3-0000-1000-8000-00805f9b34fb';
+    const DEVICE_INFO_SERVICE_UUID = '0000180a-0000-1000-8000-00805f9b34fb';
+
+    const FIRMWARE_CHARACTERISTIC_UUID = '00002a26-0000-1000-8000-00805f9b34fb';
+
+    var bleServer;
+    var fileBlockCharacteristic;
+
+    var defaultConfig = 'DTBK;display_rotation=2;show_clock=1;led_color=0xff0000;led_brightness=9;logo_text=MAPVIET;speed_limit_offset=0;welcome_text=' + 
+                        ';show_text_kmh=1' +
+                        ';obd_scan_duration=0' +
+                        ';night_brightness=5' +
+                        ';show_speed=1' +
+                        ';show_number_marker=1' +
+                        ';beep_limit_change=0' +
+                        ';screen=0' +
+                        ';sleep_screen_mode=1' +
+                        ';keep_awake_on_obd=1' +
+                        ';show_weather=1' +
+                        ';boot_screen_duration=1';
+
+    if (!navigator.bluetooth) {
+        console.log('Web Bluetooth API is not available in this browser!');
+        bleStateContainer.innerHTML = "Trình duyệt này (thiết bị này) không hỗ trợ!<br> " +
+                                          "Thử mở trang này bằng máy tính và trình duyệt Chrome).<br>" +
+                                          "Hoặc thử mở trang này bằng điện thoại Android. <br>" +
+                                          "Hoặc thử cài ứng dụng <a href=\"https://apps.apple.com/us/app/bluefy-web-ble-browser/id1492822055\">Bluefy</a> trên iPhone và dùng nó để mở lại trang này.";
+        connectButton.style.display = "none"
+    }
+
+    // Connect Button (search for BLE Devices only if BLE is available)
+    connectButton.addEventListener('click', (event) => {
+        connect();
+
+        transferFileButton.addEventListener('click', function(event) {    
+            let input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/jpeg';
+            input.onchange = _ => {
+              // you can use this method to get file and perform respective operations
+                let files =   Array.from(input.files);
+                let file = files[0];
+                let reader = new FileReader();
+                reader.onload = function (event) {
+                    let arrayBuffer = event.target.result;
+                    let array = new Uint8Array(arrayBuffer);
+                    transferFile(arrayBuffer);
+                };
+                reader.readAsArrayBuffer(file);
+            };
+
+            input.click();
+        });
+
+    });
+
+   function onDisconnected(event){
+        bleStateContainer.innerHTML = "Không kết nối";
+        bleStateContainer.style.color = "#d13a30";
+        configBlock.style.display = "none";
+        connectButton.style.display = "block";
+    }
+
+    async function connect() {
+        console.log('Initializing Bluetooth...');
+        const device = await navigator.bluetooth.requestDevice({
+            filters: [{name: DEVICE_NAME}],
+            optionalServices: [SERVICE_UUID,DEVICE_INFO_SERVICE_UUID]
+        });
+
+        device.addEventListener('gattserverdisconnected', onDisconnected);
+
+        console.log('Device Selected:', device.name);
+        bleStateContainer.innerHTML = 'Đang kết nối với ProMax ';
+        bleStateContainer.style.color = "#242237";
+
+        console.log('Connecting to device ...');
+
+        bleServer = await device.gatt.connect();
+
+        console.log('Getting device info service ...');
+        const deviceInfoService = await bleServer.getPrimaryService(DEVICE_INFO_SERVICE_UUID);
+
+        console.log('Getting firmware characteristics ...');
+        const firmwareCharacteristic = await deviceInfoService.getCharacteristic(FIRMWARE_CHARACTERISTIC_UUID);
+
+        console.log("Try to read revision value");
+        const value = await firmwareCharacteristic.readValue();
+        console.log("Read value: ", value);
+        const decodedValue = new TextDecoder().decode(value);
+        bleStateContainer.style.color = "#24af37";
+        bleStateContainer.innerHTML = 'Đã kết nối với ProMax ' + decodedValue;
+        configBlock.style.display = "block";
+        console.log("Decoded value: ", decodedValue);
+        parseData();
+        loadCurrentConfig();
+        connectButton.style.display = "none";
+    }
+
+    async function loadCurrentConfig() {
+        const service = await bleServer.getPrimaryService(SERVICE_UUID);
+        const notifCharacteristic = await service.getCharacteristic(NOTIF_CHAR_UUID);
+        
+        try { await notifCharacteristic.stopNotifications(); } catch(e) {}
+        notifCharacteristic.addEventListener('characteristicvaluechanged', handleCharacteristicChange);
+        await notifCharacteristic.startNotifications();
+
+        fileBlockCharacteristic = await service.getCharacteristic(FILE_BLOCK_UUID);
+
+        const writeCharacteristic = await service.getCharacteristic(WRITE_CHAR_UUID);
+        const string = 'LOAD';
+        const data = Uint8Array.from(string.split("").map(x => x.charCodeAt()));
+        writeCharacteristic.writeValueWithoutResponse(data);
+    }
+
+    function handleCharacteristicChange(event){
+        const newValueReceived = new TextDecoder().decode(event.target.value);
+        console.log("Current config value: ", newValueReceived);
+        if (newValueReceived != "") {
+            defaultConfig = newValueReceived;
+            parseData();    
+        }
+    }
+
+    async function send() {
+        const service = await bleServer.getPrimaryService(SERVICE_UUID);
+        const writeCharacteristic = await service.getCharacteristic(WRITE_CHAR_UUID);
+        const string = document.getElementById("configOutput").value;
+        const data = Uint8Array.from(string.split("").map(x => x.charCodeAt()));
+        await writeCharacteristic.writeValueWithoutResponse(data);
+        sendState.innerHTML = 'Đã gửi! Reload sau 3s';
+        setTimeout(() => window.location.reload(), 3000);
+    }
+
+    function disconnectDevice() {
+        console.log("Disconnect Device.");
+        if (bleServer && bleServer.connected) {
+            bleServer.disconnect();
+            console.log("Device Disconnected");
+            bleStateContainer.innerHTML = "Không kết nối";
+            bleStateContainer.style.color = "#d13a30";
+            configBlock.style.display = "none";
+        } else {
+            // Throw an error if Bluetooth is not connected
+            console.error("Bluetooth is not connected.");
+            window.alert("Chưa kết nối với thiết bị Bluetooth.")
+        }
+    }
+
+    function updateConfig() {
+        var ledColor = document.getElementById("led_color").value.replace("#", "0x");
+        var configString = "DTBK;display_rotation=" + document.getElementById("display_rotation").value +
+                           ";show_clock=" + document.getElementById("show_clock").value +
+                           ";led_color=" + ledColor +
+                           ";led_brightness=" + document.getElementById("led_brightness").value +
+                           ";logo_text=" + document.getElementById("logo_text").value +
+                           ";speed_limit_offset=" + document.getElementById("speed_limit_offset").value +
+                           ";night_brightness=" + document.getElementById("night_brightness").value +
+                           ";welcome_text=" + document.getElementById("welcome_text").value +
+                           ";show_text_kmh=" + document.getElementById("show_text_kmh").value +
+                           ";show_speed=" + document.getElementById("show_speed").value +
+                           ";obd_scan_duration=" + document.getElementById("obd_scan_duration").value +
+                           ";show_number_marker=" + document.getElementById("show_number_marker").value +
+                           ";beep_limit_change=" + document.getElementById("beep_limit_change").value +
+                           ";screen=" + document.getElementById("screen").value +
+                           ";sleep_screen_mode=" + document.getElementById("sleep_screen_mode").value +
+                           ";keep_awake_on_obd=" + document.getElementById("keep_awake_on_obd").value +
+                           ";show_weather=" + document.getElementById("show_weather").value +
+                           ";boot_screen_duration=" + document.getElementById("boot_screen_duration").value;
+
+        configOutput.value = configString;
+    }
+
+    function parseData() {
+        configOutput.value = defaultConfig;
+        var currentSetting = configOutput.value;
+        currentSetting.split(';').forEach(function (value) {
+            var keypair = value.split('=');
+            console.log("key = " + keypair[0] + " value = " + keypair[1]);
+
+            var element = document.getElementById(keypair[0]);
+            if (typeof(element) != 'undefined' && element != null) {
+                if (keypair[0] == 'led_color') {
+                    element.value = keypair[1].replace("0x", "#");
+                } else {
+                    element.value = keypair[1];    
+                }    
+            }
+        });
+    }
+
+    async function transferFile(fileContents) {
+        let maximumLength = 100*1024;
+        if (fileContents.byteLength > maximumLength) {
+            console.error("File length is too long: " + fileContents.byteLength + " bytes but maximum is " + maximumLength);
+            return;
+        }
+        transferFileButton.style.display = 'none';
+        sendButton.style.display = 'none';
+        percent.style.display = 'block';
+        sendFileBlock(fileContents, 0);
+    }
+
+    const delay = (delayInms) => {
+        return new Promise(resolve => setTimeout(resolve, delayInms));
+    };
+
+    async function sendFileBlock(fileContents, bytesAlreadySent) {
+        await delay(100);
+        let bytesRemaining = fileContents.byteLength - bytesAlreadySent;
+        const maxBlockLength = 128;
+        const blockLength = Math.min(bytesRemaining, maxBlockLength);
+        const blockView = new Uint8Array(fileContents, bytesAlreadySent, blockLength);
+
+        await fileBlockCharacteristic.writeValue(blockView);
+
+        bytesRemaining -= blockLength;
+        if (bytesRemaining > 0) {
+            percent.innerHTML = Math.round(100 * (bytesAlreadySent / fileContents.byteLength))  + '%';
+            bytesAlreadySent += blockLength;
+            sendFileBlock(fileContents, bytesAlreadySent);
+        }
+        if (bytesRemaining <= 0) {
+            transferFileButton.style.display = 'block';
+            sendButton.style.display = 'block';
+            percent.style.display = 'none';
+            const string = "DTBK";
+            const data = Uint8Array.from(string.split("").map(x => x.charCodeAt()))
+            fileBlockCharacteristic.writeValueWithoutResponse(data);  
+        }
+    }
+    
+</script>
+
+</html>
