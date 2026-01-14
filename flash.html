@@ -74,13 +74,28 @@
           color: #58a6ff;
         }
       }
+
+
+  .xl-blink {
+    color: red;
+    font-weight: bold;
+    animation: blink 1s infinite;
+  }
+
+  @keyframes blink {
+    0%   { opacity: 1; }
+    50%  { opacity: 0; }
+    100% { opacity: 1; }
+  }
+
+
     </style>
     <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
   </head>
   <body>
     <div class="content">
-      <h1>Nạp firmware ProMax XL</h1>
-      <p>Cắm ProMax XL vào máy tính. Ấn nút dưới để nạp firmware mới nhất. </p> 
+      <h1>Nạp firmware ProMax <span class="xl-blink">XL</span></h1>
+      <p>Cắm ProMax <span style="color:#e60000; font-weight:bold;">XL</span> vào máy tính. Ấn nút dưới để nạp firmware mới nhất. </p> 
       <p class="button-row" align="left">
         <esp-web-install-button manifest="./manifest.json">
           <button slot="activate">Install</button>
