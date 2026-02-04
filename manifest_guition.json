@@ -1,0 +1,12 @@
+{
+  "name": "ProMax XL Vỏ Bạc",
+  "version": "1.0",
+  "new_install_prompt_erase": false,
+  "builds": [
+    
+    {
+      "chipFamily": "ESP32-S3",
+      "parts": [{ "path": "firmware/firmware_guition.bin", "offset": 0 }]
+    }
+  ]
+}

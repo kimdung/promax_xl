@@ -95,9 +95,19 @@
   <body>
     <div class="content">
       <h1>Nạp firmware ProMax <span class="xl-blink">XL</span></h1>
-      <p>Cắm ProMax <span style="color:#e60000; font-weight:bold;">XL</span> vào máy tính. Ấn nút dưới để nạp firmware mới nhất. </p> 
+      <p>Cắm ProMax <span style="color:#e60000; font-weight:bold;">XL</span> vào máy tính. Chọn loại để nạp firmware mới nhất. </p> 
+
+      <ul class="radios">
+        <li>
+          <label><input type="radio" name="type" value="waveshare" /> Vỏ Đen </label>
+        </li>
+        <li>
+          <label><input type="radio" name="type" value="guition" /> Vỏ Bạc </label>
+        </li>
+      </ul>
+
       <p class="button-row" align="left">
-        <esp-web-install-button manifest="./manifest.json">
+        <esp-web-install-button class="invisible">
           <button slot="activate">Install</button>
           <span slot="unsupported">Trình duyệt này không hỗ trợ. Thử dùng chrome trên máy tính</span>
           <span slot="not-allowed">Ah snap, you are not allowed to use this on HTTP!</span>
@@ -114,5 +124,15 @@
                   <a href="https://www.wch.cn/downloads/CH343SER_ZIP.html" target="_blank" rel="noopener">Windows</a>, <a href="https://www.wch.cn/downloads/CH34XSER_MAC_ZIP.html" target="_blank" rel="noopener">Mac</a></li>
       </ul>  
     </i>
+
+    <script>
+      document.querySelectorAll('input[name="type"]').forEach(radio =>
+        radio.addEventListener("change", () => {
+          const button = document.querySelector('esp-web-install-button');
+          button.manifest = `./manifest_${radio.value}.json`;
+          button.classList.remove('invisible');
+        }
+      ));
+    </script>
   </body>
 </html>
