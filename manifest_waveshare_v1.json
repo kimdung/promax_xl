@@ -1,0 +1,13 @@
+{
+  "name": "ProMax XL Vỏ Đen",
+  "version": "1.0",
+  "ota_firmware": "firmware/waveshare_ota_v1.bin",
+  "new_install_prompt_erase": false,
+  "builds": [
+    
+    {
+      "chipFamily": "ESP32-S3",
+      "parts": [{ "path": "firmware/firmware_waveshare_v1.bin", "offset": 0 }]
+    }
+  ]
+}
