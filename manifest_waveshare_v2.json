@@ -1,6 +1,6 @@
 {
   "name": "ProMax XL Vỏ Đen",
-  "version": "1.0",
+  "version": "2.0",
   "ota_firmware": "firmware/waveshare_ota_v2.bin",
   "new_install_prompt_erase": false,
   "builds": [
