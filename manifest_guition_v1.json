@@ -1,6 +1,6 @@
 {
   "name": "ProMax XL Vỏ Bạc",
-  "version": "2.12",
+  "version": "2.15",
   "ota_firmware": "firmware/guition_ota_v1.bin",
   "new_install_prompt_erase": false,
   "builds": [
