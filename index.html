@@ -165,6 +165,22 @@ h2 {
 
 <div class="container">
 <h2>🚀 Upload ảnh Promax XL</h2>
+
+<div id="bleWarning" style="
+    display:none;
+    background:#7f1d1d;
+    color:#fecaca;
+    padding:10px;
+    border-radius:10px;
+    font-size:13px;
+    margin-bottom:15px;
+">
+❌ Trình duyệt không hỗ trợ Bluetooth.<br>
+Vui lòng dùng <b>Google Chrome</b> trên máy tính hoặc điện thoại Android.<br>
+Hoặc ứng dụng <a href="https://apps.apple.com/us/app/bluefy-web-ble-browser/id1492822055"><b>Bluefy</b></a> trên iPhone
+</div>
+
+
 <div class="sub">
 Trên Promax XL vào <b>Cài đặt → Ảnh khởi động</b><br>
 hoặc <b>Cài đặt → Ảnh mặt đồng hồ</b><br>
@@ -189,6 +205,28 @@ Sau đó bấm lần lượt <b>1 → 2 → 3</b>
 </div>
 
 <script>
+
+window.addEventListener("load", () => {
+    if (!navigator.bluetooth) {
+        const warn = document.getElementById("bleWarning");
+        warn.style.display = "block";
+
+        // disable toàn bộ nút
+        document.querySelectorAll("button").forEach(btn => {
+            btn.disabled = true;
+            btn.style.opacity = "0.5";
+            btn.style.cursor = "not-allowed";
+        });
+
+        document.querySelector(".file-label").style.pointerEvents = "none";
+        document.querySelector(".file-label").style.opacity = "0.5";
+
+        document.getElementById("status").innerText = "Trình duyệt không hỗ trợ BLE ❌";
+    }
+});
+
+
+
 let device, characteristic;
 let fileBuffer = null;
 
