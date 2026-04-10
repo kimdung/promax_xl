@@ -164,7 +164,6 @@ h2 {
 <body>
 
 <div class="container">
-
 <h2>🚀 Upload ảnh Promax XL</h2>
 <div class="sub">
 Trên Promax XL vào <b>Cài đặt → Ảnh khởi động</b><br>
@@ -211,25 +210,70 @@ function resetUI(msg = "Disconnected") {
     characteristic = null;
 }
 
+async function getServiceWithRetry(server, uuid, retry = 3) {
+    for (let i = 0; i < retry; i++) {
+        try {
+            const service = await server.getPrimaryService(uuid);
+            return service;
+        } catch (e) {
+            console.warn("Retry get service...", i);
+            await delay(300);
+        }
+    }
+    throw new Error("Service not found after retry");
+}
+
 async function connect() {
     try {
+        console.log("🔍 Requesting device...");
+
         device = await navigator.bluetooth.requestDevice({
             filters: [{ name: "Promax XL" }],
             optionalServices: [SERVICE_UUID]
         });
 
+        console.log("✅ Device selected:", device.name, device.id);
+
         device.addEventListener('gattserverdisconnected', () => {
+            console.warn("⚠️ Device disconnected");
             resetUI("Disconnected ❌");
         });
 
+        await delay(300); // thêm trước connect
+
+        console.log("🔌 Connecting to GATT...");
         const server = await device.gatt.connect();
-        const service = await server.getPrimaryService(SERVICE_UUID);
+        console.log("✅ GATT connected");
+
+        console.log("📡 Getting service:", SERVICE_UUID);
+        // const service = await server.getPrimaryService(SERVICE_UUID);
+        
+        const service = await getServiceWithRetry(server, SERVICE_UUID);
+        // services.forEach(s => console.log(s.uuid));
+        // console.log("✅ Service OK");
+
+        console.log("✍️ Getting characteristic:", WRITE_UUID);
         characteristic = await service.getCharacteristic(WRITE_UUID);
+        console.log("✅ Characteristic OK");
 
         statusDiv.innerText = "Connected ✅";
 
     } catch (e) {
-        statusDiv.innerText = "Connect failed ❌";
+        console.error("❌ Connect error:", e);
+
+        let msg = "Connect failed ❌";
+
+        if (e.name === "NotFoundError") {
+            msg = "Không tìm thấy thiết bị ❌";
+        } else if (e.name === "SecurityError") {
+            msg = "Bluetooth bị chặn (HTTPS / permission) ❌";
+        } else if (e.name === "NetworkError") {
+            msg = "Lỗi kết nối BLE (device bận / out of range) ❌";
+        } else if (e.message) {
+            msg = e.message;
+        }
+
+        statusDiv.innerText = msg;
     }
 }
 
