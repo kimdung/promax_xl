@@ -232,6 +232,7 @@ let fileBuffer = null;
 
 const SERVICE_UUID = '0000fff0-0000-1000-8000-00805f9b34fb';
 const WRITE_UUID   = '0000fff1-0000-1000-8000-00805f9b34fb';
+const WAZE_SERVICE_UUID = '8a7e0001-4d6e-4c48-9a9d-484c504c0001';
 
 const bar = document.getElementById("bar");
 const percentText = document.getElementById("percent");
@@ -267,7 +268,8 @@ async function connect() {
 
         device = await navigator.bluetooth.requestDevice({
             filters: [
-                { services: [SERVICE_UUID] }
+                { services: [SERVICE_UUID]},
+                { services: [WAZE_SERVICE_UUID]}
             ]
         });
 
