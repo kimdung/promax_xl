@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -189,8 +190,8 @@ Sau đó bấm lần lượt <b>1 → 2 → 3</b>
 
 <button class="btn btn-primary" onclick="connect()">(1) Kết nối</button>
 
-<input type="file" id="fileInput" accept="image/jpeg" hidden>
-<label for="fileInput" class="file-label">(2) Chọn ảnh (360x360, &lt;512KB)</label>
+<input type="file" id="fileInput" accept="image/*" hidden>
+<label for="fileInput" class="file-label">(2) Chọn ảnh (tự chuyển về JPEG 360x360)</label>
 
 <div id="preview" class="preview"></div>
 
@@ -318,40 +319,185 @@ async function connect() {
     }
 }
 
-document.getElementById("fileInput").onchange = (e) => {
+// ================== XỬ LÝ ẢNH: tự chuyển về JPEG baseline 360x360 ==================
+const IMG_SIZE = 360;
+const MAX_BYTES = 512 * 1024;
+const MAX_INPUT_BYTES = 30 * 1024 * 1024;
+
+// Đọc EXIF orientation (1 = bình thường). Trả về 1 nếu không có / lỗi.
+function readExifOrientation(v, tiff, end) {
+    try {
+        if (tiff + 8 > end) return 1;
+        const le = v.getUint16(tiff) === 0x4949;              // "II" = little-endian, "MM" = big-endian
+        const ifd = tiff + v.getUint32(tiff + 4, le);
+        if (ifd + 2 > end) return 1;
+        const cnt = v.getUint16(ifd, le);
+        for (let i = 0; i < cnt; i++) {
+            const e = ifd + 2 + i * 12;
+            if (e + 12 > end) break;
+            if (v.getUint16(e, le) === 0x0112) return v.getUint16(e + 8, le);
+        }
+    } catch (_) {}
+    return 1;
+}
+
+// Đọc cấu trúc JPEG: loại (SOF), kích thước, số kênh, subsampling, EXIF orientation.
+// Trả về null nếu không phải JPEG.
+function inspectJpeg(buf) {
+    const v = new DataView(buf);
+    const n = v.byteLength;
+    if (n < 4 || v.getUint16(0) !== 0xFFD8) return null;
+
+    const info = { sof: 0, width: 0, height: 0, comps: 0, sampling: 0, orientation: 1 };
+    let p = 2;
+    while (p + 4 <= n) {
+        if (v.getUint8(p) !== 0xFF) break;
+        const m = v.getUint8(p + 1);
+        if (m === 0xFF) { p++; continue; }                                  // byte đệm
+        if (m === 0x01 || (m >= 0xD0 && m <= 0xD8)) { p += 2; continue; }  // marker không có độ dài
+        if (m === 0xD9 || m === 0xDA) break;                                // EOI / SOS
+        const len = v.getUint16(p + 2);
+        if (len < 2 || p + 2 + len > n) break;
+
+        if (m === 0xE1 && len >= 16 && v.getUint32(p + 4) === 0x45786966) { // "Exif"
+            info.orientation = readExifOrientation(v, p + 10, p + 2 + len);
+        }
+        if (m >= 0xC0 && m <= 0xCF && m !== 0xC4 && m !== 0xC8 && m !== 0xCC && len >= 11) { // SOFn
+            info.sof = m;                       // 0xC0 = baseline, 0xC2 = progressive
+            info.height = v.getUint16(p + 5);
+            info.width = v.getUint16(p + 7);
+            info.comps = v.getUint8(p + 9);
+            info.sampling = v.getUint8(p + 11); // H/V của thành phần Y (0x22 = 4:2:0)
+            break;
+        }
+        p += 2 + len;
+    }
+    return info;
+}
+
+// File đã dùng được ngay trên ESP32 (TJpgDec) chưa?
+function isDeviceReady(info, size) {
+    return !!info &&
+        info.sof === 0xC0 &&                                   // baseline; TJpgDec không đọc được progressive (0xC2)
+        (info.comps === 1 || info.comps === 3) &&
+        info.width === IMG_SIZE && info.height === IMG_SIZE &&
+        [0x11, 0x21, 0x22].includes(info.sampling) &&          // các kiểu subsampling TJpgDec hỗ trợ
+        info.orientation === 1 &&                              // có EXIF xoay thì phải vẽ lại cho đúng chiều
+        size <= MAX_BYTES;
+}
+
+// ---- Phần phụ thuộc trình duyệt ----
+
+function readAsArrayBuffer(blob) {
+    return new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = () => reject(r.error || new Error("Không đọc được file"));
+        r.readAsArrayBuffer(blob);
+    });
+}
+
+function loadImage(file) {
+    return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error("Trình duyệt không đọc được ảnh này"));
+        };
+        img.src = url;
+    });
+}
+
+function canvasToJpegBuffer(canvas, quality) {
+    return new Promise((resolve, reject) => {
+        canvas.toBlob(blob => {
+            if (!blob) { reject(new Error("Trình duyệt không xuất được JPEG")); return; }
+            readAsArrayBuffer(blob).then(resolve, reject);
+        }, "image/jpeg", quality);
+    });
+}
+
+// Vẽ ảnh vào canvas 360x360 (cắt giữa kiểu "cover", giống preview tròn) rồi xuất JPEG baseline
+async function convertToBaseline(img) {
+    if (!img.naturalWidth || !img.naturalHeight) throw new Error("Ảnh không có kích thước");
+
+    const canvas = document.createElement("canvas");
+    canvas.width = IMG_SIZE;
+    canvas.height = IMG_SIZE;
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, IMG_SIZE, IMG_SIZE);               // nền đen cho ảnh PNG/WebP trong suốt
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+
+    const scale = Math.max(IMG_SIZE / img.naturalWidth, IMG_SIZE / img.naturalHeight);
+    const dw = img.naturalWidth * scale;
+    const dh = img.naturalHeight * scale;
+    ctx.drawImage(img, (IMG_SIZE - dw) / 2, (IMG_SIZE - dh) / 2, dw, dh);
+
+    for (const q of [0.92, 0.85, 0.75, 0.6, 0.45]) {
+        const buf = await canvasToJpegBuffer(canvas, q);
+        const info = inspectJpeg(buf);
+        if (!info) throw new Error("Trình duyệt không xuất được JPEG");
+        if (info.sof !== 0xC0) throw new Error("Trình duyệt tạo JPEG không phải baseline");
+        if (buf.byteLength <= MAX_BYTES) return buf;
+    }
+    throw new Error("Không nén được ảnh xuống dưới 512KB");
+}
+
+let loadToken = 0;
+let previewUrl = null;
+
+function showPreview(buf) {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    previewUrl = URL.createObjectURL(new Blob([buf], { type: "image/jpeg" }));
+    preview.innerHTML = `
+        <div class="circle">
+            <img src="${previewUrl}">
+            <div class="radar" id="radar" style="display:none"></div>
+        </div>
+    `;
+}
+
+document.getElementById("fileInput").onchange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (file.size > 512 * 1024) {
-        alert("File phải < 512KB");
+    const token = ++loadToken;
+    fileBuffer = null;
+
+    if (file.size > MAX_INPUT_BYTES) {
+        statusDiv.innerText = "Ảnh quá lớn (> 30MB) ❌";
+        e.target.value = "";
         return;
     }
+    statusDiv.innerText = "Đang xử lý ảnh...";
 
-    const img = new Image();
-    const url = URL.createObjectURL(file);
+    try {
+        let buf = await readAsArrayBuffer(file);
+        let note;
 
-    img.onload = () => {
-        if (img.width !== 360 || img.height !== 360) {
-            alert("Ảnh phải 360x360");
-            return;
+        if (isDeviceReady(inspectJpeg(buf), buf.byteLength)) {
+            note = "dùng nguyên file gốc";
+        } else {
+            const img = await loadImage(file);
+            buf = await convertToBaseline(img);
+            note = "đã chuyển sang JPEG baseline 360x360";
         }
+        if (token !== loadToken) return;                  // người dùng đã chọn ảnh khác
 
-        preview.innerHTML = `
-            <div class="circle">
-                <img src="${url}">
-                <div class="radar" id="radar" style="display:none"></div>
-            </div>
-        `;
-
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            fileBuffer = ev.target.result;
-            statusDiv.innerText = "Ready ✅";
-        };
-        reader.readAsArrayBuffer(file);
-    };
-
-    img.src = url;
+        fileBuffer = buf;
+        showPreview(buf);
+        statusDiv.innerText = `Ready ✅ (${note}, ${(buf.byteLength / 1024).toFixed(1)}KB)`;
+    } catch (err) {
+        console.error(err);
+        if (token === loadToken) statusDiv.innerText = (err.message || "Lỗi xử lý ảnh") + " ❌";
+    } finally {
+        e.target.value = "";                              // cho phép chọn lại cùng một file
+    }
 };
 
 async function sendImage() {
