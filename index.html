@@ -266,10 +266,10 @@ async function connect() {
     try {
         console.log("🔍 Requesting device...");
 
-        device = await navigator.bluetooth.requestDevice({
+       const device = await navigator.bluetooth.requestDevice({
             filters: [
-                { services: [SERVICE_UUID]},
-                { services: [WAZE_SERVICE_UUID]}
+                { namePrefix: "Promax" },
+                { namePrefix: "VIETMAP_HUD_H50" }
             ]
         });
 
