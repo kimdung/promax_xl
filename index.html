@@ -96,6 +96,38 @@ h2 {
     background: rgba(59,130,246,0.1);
 }
 
+.type-select {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.type-select label {
+    flex: 1;
+    text-align: center;
+    padding: 10px;
+    border-radius: 12px;
+    border: 1px solid #374151;
+    cursor: pointer;
+    font-size: 13px;
+    transition: 0.2s;
+}
+
+.type-select input {
+    display: none;
+}
+
+.type-select label:has(input:checked) {
+    border-color: var(--accent2);
+    background: rgba(59,130,246,0.1);
+    color: var(--accent2);
+    font-weight: 600;
+}
+
+.preview audio {
+    width: 100%;
+}
+
 .preview {
     display: flex;
     justify-content: center;
@@ -182,7 +214,12 @@ Hoặc ứng dụng <a href="https://apps.apple.com/us/app/bluefy-web-ble-browse
 </div>
 
 
-<div class="sub">
+<div class="type-select">
+    <label><input type="radio" name="fileType" value="image" checked>🖼️ Ảnh</label>
+    <label><input type="radio" name="fileType" value="alarm">🔔 Âm thanh quá tốc độ</label>
+</div>
+
+<div class="sub" id="guide">
 Trên Promax XL vào <b>Cài đặt → Ảnh khởi động</b><br>
 hoặc <b>Cài đặt → Ảnh mặt đồng hồ</b><br>
 Sau đó bấm lần lượt <b>1 → 2 → 3</b>
@@ -191,7 +228,7 @@ Sau đó bấm lần lượt <b>1 → 2 → 3</b>
 <button class="btn btn-primary" onclick="connect()">(1) Kết nối</button>
 
 <input type="file" id="fileInput" accept="image/*" hidden>
-<label for="fileInput" class="file-label">(2) Chọn ảnh (tự chuyển về JPEG 360x360)</label>
+<label for="fileInput" class="file-label" id="fileLabel">(2) Chọn ảnh (tự chuyển về JPEG 360x360)</label>
 
 <div id="preview" class="preview"></div>
 
@@ -201,7 +238,7 @@ Sau đó bấm lần lượt <b>1 → 2 → 3</b>
 <div id="percent" class="percent">0%</div>
 <div id="status" class="status">Chưa kết nối</div>
 
-<button class="btn btn-success" onclick="sendImage()">(3) Gửi ảnh</button>
+<button class="btn btn-success" onclick="sendFile()" id="sendButton">(3) Gửi ảnh</button>
 
 </div>
 
@@ -234,11 +271,70 @@ let fileBuffer = null;
 const SERVICE_UUID = '0000fff0-0000-1000-8000-00805f9b34fb';
 const WRITE_UUID   = '0000fff1-0000-1000-8000-00805f9b34fb';
 const WAZE_SERVICE_UUID = '8a7e0001-4d6e-4c48-9a9d-484c504c0001';
+const DEVICE_INFO_SERVICE_UUID = '0000180a-0000-1000-8000-00805f9b34fb';
+const FIRMWARE_VERSION_UUID    = '00002a26-0000-1000-8000-00805f9b34fb';
+
+// Firmware từ bản này trở lên mới hiểu "MP3_START" / "MP3_END".
+// Firmware cũ bỏ qua toàn bộ (không ghi gì) nhưng web vẫn báo xong -> chặn để báo người dùng cập nhật.
+const MIN_AUDIO_FW_VERSION = "2.47";
+
+let firmwareVersion = null;   // null = chưa kết nối hoặc không đọc được
 
 const bar = document.getElementById("bar");
 const percentText = document.getElementById("percent");
 const statusDiv = document.getElementById("status");
 const preview = document.getElementById("preview");
+
+// ================== LOẠI FILE ==================
+// image: giữ giao thức cũ "IMG_START;<size>" -> firmware tự chọn ảnh khởi động / mặt đồng hồ theo màn hình đang mở
+// alarm: "MP3_START;<size>" ... "MP3_END" -> firmware ghi vào file âm thanh báo động (cần firmware mới)
+const FILE_TYPES = {
+    image: {
+        accept: "image/*",
+        label: "(2) Chọn ảnh (tự chuyển về JPEG 360x360)",
+        send: "(3) Gửi ảnh",
+        guide: "Trên Promax XL vào <b>Cài đặt → Ảnh khởi động</b><br>" +
+               "hoặc <b>Cài đặt → Ảnh mặt đồng hồ</b><br>" +
+               "Sau đó bấm lần lượt <b>1 → 2 → 3</b>",
+    },
+    alarm: {
+        accept: ".mp3,audio/mpeg",
+        label: "(2) Chọn file âm thanh MP3 (tối đa 1MB)",
+        send: "(3) Gửi âm thanh",
+        guide: "Bấm lần lượt <b>1 → 2 → 3</b><br>" +
+               "Cần firmware mới có hỗ trợ nhận âm thanh qua Bluetooth",
+    },
+};
+
+const MAX_AUDIO_BYTES = 1024 * 1024;
+
+const fileInput = document.getElementById("fileInput");
+const fileLabel = document.getElementById("fileLabel");
+const sendButton = document.getElementById("sendButton");
+const guideDiv = document.getElementById("guide");
+
+let fileType = "image";
+
+function applyFileType(type) {
+    fileType = type;
+    const t = FILE_TYPES[type];
+    fileInput.accept = t.accept;
+    fileLabel.innerText = t.label;
+    sendButton.innerText = t.send;
+    guideDiv.innerHTML = t.guide;
+
+    // bỏ file đã chọn của loại cũ
+    loadToken++;
+    fileBuffer = null;
+    preview.innerHTML = "";
+    bar.style.width = "0%";
+    percentText.innerText = "0%";
+    statusDiv.innerText = connectedStatus();
+}
+
+document.querySelectorAll('input[name="fileType"]').forEach(radio => {
+    radio.addEventListener("change", () => applyFileType(radio.value));
+});
 
 function resetUI(msg = "Disconnected") {
     bar.style.width = "0%";
@@ -248,6 +344,42 @@ function resetUI(msg = "Disconnected") {
     statusDiv.innerText = msg;
     device = null;
     characteristic = null;
+    firmwareVersion = null;
+}
+
+// Đọc version firmware (chuỗi APP_VERSION, ví dụ "2.46"). Không đọc được thì trả về null.
+async function readFirmwareVersion(server) {
+    try {
+        const infoService = await server.getPrimaryService(DEVICE_INFO_SERVICE_UUID);
+        const versionChar = await infoService.getCharacteristic(FIRMWARE_VERSION_UUID);
+        const value = await versionChar.readValue();
+        return new TextDecoder().decode(value).replace(/\0/g, "").trim();
+    } catch (e) {
+        console.warn("Cannot read firmware version:", e);
+        return null;
+    }
+}
+
+// So sánh version như số thập phân (2.1 < 2.46 < 2.47 < 2.5 < 3.0): trả về <0, 0, >0
+// Version không phải số -> NaN, mọi phép so sánh đều false
+function compareVersion(a, b) {
+    return parseFloat(a) - parseFloat(b);
+}
+
+// Không đọc được version thì coi như firmware cũ
+function supportsAudioUpload() {
+    return !!firmwareVersion && compareVersion(firmwareVersion, MIN_AUDIO_FW_VERSION) >= 0;
+}
+
+function audioNotSupportedMessage() {
+    return `Firmware ${firmwareVersion || "không rõ"} chưa hỗ trợ gửi âm thanh, ` +
+           `cần cập nhật lên ${MIN_AUDIO_FW_VERSION} trở lên ❌`;
+}
+
+function connectedStatus() {
+    if (!characteristic) return "Chưa kết nối";
+    if (fileType === "alarm" && !supportsAudioUpload()) return audioNotSupportedMessage();
+    return firmwareVersion ? `Connected ✅ (firmware ${firmwareVersion})` : "Connected ✅";
 }
 
 async function getServiceWithRetry(server, uuid, retry = 3) {
@@ -271,7 +403,8 @@ async function connect() {
             filters: [
                 { namePrefix: "Promax" },
                 { namePrefix: "VIETMAP_HUD_H50" }
-            ]
+            ],
+            optionalServices: [SERVICE_UUID, DEVICE_INFO_SERVICE_UUID]
         });
 
         console.log("✅ Device selected:", device.name, device.id);
@@ -298,7 +431,10 @@ async function connect() {
         characteristic = await service.getCharacteristic(WRITE_UUID);
         console.log("✅ Characteristic OK");
 
-        statusDiv.innerText = "Connected ✅";
+        firmwareVersion = await readFirmwareVersion(server);
+        console.log("ℹ️ Firmware version:", firmwareVersion);
+
+        statusDiv.innerText = connectedStatus();
 
     } catch (e) {
         console.error("❌ Connect error:", e);
@@ -462,12 +598,60 @@ function showPreview(buf) {
     `;
 }
 
+// ================== XỬ LÝ ÂM THANH ==================
+// File MP3 bắt đầu bằng tag "ID3" hoặc ngay frame sync (11 bit 1)
+function isMp3(buf) {
+    const b = new Uint8Array(buf, 0, Math.min(3, buf.byteLength));
+    if (b.length < 3) return false;
+    if (b[0] === 0x49 && b[1] === 0x44 && b[2] === 0x33) return true;   // "ID3"
+    return b[0] === 0xFF && (b[1] & 0xE0) === 0xE0;
+}
+
+function showAudioPreview(buf) {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    previewUrl = URL.createObjectURL(new Blob([buf], { type: "audio/mpeg" }));
+    preview.innerHTML = `<audio controls src="${previewUrl}"></audio>`;
+}
+
+async function loadAudioFile(file) {
+    if (file.size > MAX_AUDIO_BYTES) {
+        statusDiv.innerText = "File âm thanh quá lớn (> 1MB) ❌";
+        return;
+    }
+    statusDiv.innerText = "Đang đọc file...";
+
+    const token = loadToken;
+    const buf = await readAsArrayBuffer(file);
+    if (token !== loadToken) return;                      // người dùng đã chọn file / loại khác
+
+    if (!isMp3(buf)) {
+        statusDiv.innerText = "File không phải MP3 ❌";
+        return;
+    }
+
+    fileBuffer = buf;
+    showAudioPreview(buf);
+    statusDiv.innerText = `Ready ✅ (${(buf.byteLength / 1024).toFixed(1)}KB)`;
+}
+
 document.getElementById("fileInput").onchange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     const token = ++loadToken;
     fileBuffer = null;
+
+    if (fileType === "alarm") {
+        try {
+            await loadAudioFile(file);
+        } catch (err) {
+            console.error(err);
+            if (token === loadToken) statusDiv.innerText = (err.message || "Lỗi đọc file") + " ❌";
+        } finally {
+            e.target.value = "";
+        }
+        return;
+    }
 
     if (file.size > MAX_INPUT_BYTES) {
         statusDiv.innerText = "Ảnh quá lớn (> 30MB) ❌";
@@ -500,9 +684,14 @@ document.getElementById("fileInput").onchange = async (e) => {
     }
 };
 
-async function sendImage() {
+async function sendFile() {
     if (!characteristic || !fileBuffer) {
         statusDiv.innerText = "Not ready ❌";
+        return;
+    }
+
+    if (fileType === "alarm" && !supportsAudioUpload()) {
+        statusDiv.innerText = audioNotSupportedMessage();
         return;
     }
 
@@ -511,8 +700,12 @@ async function sendImage() {
 
     const size = fileBuffer.byteLength;
 
+    // ảnh giữ nguyên giao thức cũ để tương thích firmware cũ, âm thanh dùng MP3_START / MP3_END
+    const isAudio = fileType === "alarm";
+    const header = isAudio ? `MP3_START;${size}` : `IMG_START;${size}`;
+
     try {
-        const startMsg = new TextEncoder().encode(`IMG_START;${size}`);
+        const startMsg = new TextEncoder().encode(header);
         await characteristic.writeValue(startMsg);
 
         await delay(50);
@@ -530,7 +723,7 @@ async function sendImage() {
             await delay(10);
         }
 
-        const endMsg = new TextEncoder().encode("IMG_END");
+        const endMsg = new TextEncoder().encode(isAudio ? "MP3_END" : "IMG_END");
         await characteristic.writeValue(endMsg);
 
         bar.style.width = "100%";
