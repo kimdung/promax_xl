@@ -388,7 +388,7 @@ async function getServiceWithRetry(server, uuid, retry = 3) {
             const service = await server.getPrimaryService(uuid);
             return service;
         } catch (e) {
-            console.warn("Retry get service...", i);
+            console.warn("Retry get service...", i, e);
             await delay(300);
         }
     }
